@@ -157,3 +157,26 @@ codyssey-Mission2/
 `state.json`이 손상된 경우에도 프로그램이 종료되지 않고, 안내 메시지를 출력한 뒤 기본 퀴즈로 복구합니다.
 
 ![데이터 파일 손상 복구](docs/screenshots/broken_state.png)
+
+## 8. 개발 환경
+
+```bash
+$ python3 --version
+Python 3.10.14
+
+$ git --version
+git version 2.50.1 (Apple Git-155)
+
+$ git config --list | grep -E 'user\.name|init\.'
+init.defaultbranch=main
+user.name=02junho
+```
+
+![개발 환경](docs/screenshots/dev_env.png)
+
+- Python 3.10 이상에서 동작합니다. (검증 환경: Python 3.10.14)
+- 외부 라이브러리를 설치하지 않고 표준 라이브러리만 사용합니다.
+  - `json`: 데이터를 JSON 형식으로 저장하고 불러오기
+  - `os`: `state.json` 경로 계산과 파일 존재 여부 확인
+  - `random`: 퀴즈 순서 무작위 출제
+  - `datetime`: 게임 기록의 날짜/시간 기록
