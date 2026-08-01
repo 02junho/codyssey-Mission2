@@ -180,3 +180,7 @@ user.name=02junho
   - `os`: `state.json` 경로 계산과 파일 존재 여부 확인
   - `random`: 퀴즈 순서 무작위 출제
   - `datetime`: 게임 기록의 날짜/시간 기록
+
+---
+
+> 이 문장은 clone 한 저장소에서 추가한 뒤 push 하고, 원본 작업 디렉터리에서 pull 로 가져온 내용입니다. (clone/pull 실습)
