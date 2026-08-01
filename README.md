@@ -21,10 +21,15 @@ Python 기본 문법과 클래스(객체 지향)로 구조를 나누고, JSON �
 ## 3. 실행 방법
 
 Python 3.10 이상이 필요하며, 외부 라이브러리 없이 표준 라이브러리만 사용합니다.
+저장소를 내려받은 뒤 프로젝트 폴더에서 아래 명령을 실행합니다.
 
 ```bash
-python main.py
+git clone https://github.com/02junho/codyssey-Mission2.git
+cd codyssey-Mission2
+python3 main.py
 ```
+
+> macOS/Linux는 `python3`, Windows는 `python`으로 실행합니다.
 
 실행하면 메뉴가 나타나고, 번호를 입력해 기능을 사용할 수 있습니다.
 
@@ -58,18 +63,47 @@ python main.py
 
 ```text
 codyssey-Mission2/
-├── main.py          # 프로그램 진입점 (python main.py 로 실행)
+├── main.py          # 프로그램 진입점 (python3 main.py 로 실행)
 ├── quiz.py          # Quiz 클래스 (퀴즈 한 문제)
 ├── quiz_game.py     # QuizGame 클래스 (게임 전체) + 입력 도우미 함수
 ├── state.json       # 데이터 저장 파일 (실행 시 자동 생성, .gitignore 처리)
 ├── .gitignore
 ├── README.md
 └── docs/
-    └── screenshots/ # 실행 화면 캡처
+    └── screenshots/         # 실행 화면과 Git 기록 캡처
+        ├── menu.png
+        ├── play1.png
+        ├── play2.png
+        ├── add_quiz.png
+        ├── quiz_list.png
+        ├── score.png
+        ├── invalid_input.png
+        ├── restart.png
+        ├── broken_state.png
+        ├── dev_env.png
+        ├── git_pull.png
+        └── git_log.png
 ```
 
-- **역할 분리**: `Quiz`는 문제 하나를, `QuizGame`은 게임 전체(메뉴/목록/점수/저장)를 담당합니다.
-  기능마다 메서드를 나눠, 어떤 코드가 무슨 일을 하는지 바로 설명할 수 있게 했습니다.
+### 5-1. 클래스와 메서드 구성
+
+역할이 다른 두 가지를 각각 클래스로 나눴습니다.
+`Quiz`는 **문제 한 개**를, `QuizGame`은 **게임 전체**를 담당합니다.
+
+| 클래스 | 파일 | 담당 | 주요 메서드 |
+|---|---|---|---|
+| `Quiz` | `quiz.py` | 퀴즈 한 문제 | `show()` 문제 출력, `is_correct()` 정답 확인, `to_dict()`/`from_dict()` JSON 변환 |
+| `QuizGame` | `quiz_game.py` | 게임 전체 | `show_menu()`, `play_quiz()`, `add_quiz()`, `list_quizzes()`, `show_score()`, `delete_quiz()`, `load_state()`/`save_state()`, `run()` |
+
+입력 처리는 클래스 밖의 도우미 함수로 분리해 여러 기능에서 재사용합니다.
+
+| 함수 | 역할 |
+|---|---|
+| `read_int(prompt, min, max)` | 범위 안의 정수를 받을 때까지 반복 (공백 제거, 문자·범위 밖·빈 입력 처리) |
+| `read_text(prompt)` | 비어 있지 않은 문자열을 받을 때까지 반복 |
+
+- `to_dict()`/`from_dict()`가 필요한 이유: JSON은 `Quiz` 객체를 그대로 저장할 수 없으므로,
+  저장할 때는 딕셔너리로 바꾸고 불러올 때는 다시 객체로 되돌립니다.
 
 ## 6. 데이터 파일 설명 (`state.json`)
 
@@ -181,6 +215,66 @@ user.name=02junho
   - `random`: 퀴즈 순서 무작위 출제
   - `datetime`: 게임 기록의 날짜/시간 기록
 
----
+## 9. Git 작업 기록
+
+기능 단위로 커밋하고, 퀴즈 풀기 기능은 별도 브랜치에서 작업한 뒤 `main`에 병합했습니다.
+
+### 9-1. 커밋 이력과 브랜치 병합
+
+```bash
+$ git log --oneline --graph --all
+```
+
+![git 그래프](docs/screenshots/git_log.png)
+
+- 총 12개의 커밋을 기능 단위로 남겼습니다.
+- 커밋 메시지는 `Feat:`(기능 추가), `Docs:`(문서), `Merge:`(병합) 형식으로 변경 내용을 요약했습니다.
+- `feature/quiz-play` 브랜치에서 퀴즈 풀기 기능을 구현한 뒤 `main`으로 병합했습니다.
+  `--no-ff` 옵션을 사용해 병합 기록이 그래프에 남도록 했습니다.
+
+```bash
+$ git checkout -b feature/quiz-play      # 브랜치 생성 및 이동
+$ git commit -m "Feat: 퀴즈 풀기 기능 구현 ..."
+$ git checkout main                      # main 으로 이동
+$ git merge --no-ff feature/quiz-play -m "Merge: 퀴즈 풀기 기능 브랜치 병합"
+```
+
+**브랜치를 나눈 이유**: `main`은 언제나 동작하는 상태로 두고, 새 기능은 분리된 공간에서 만들다가
+완성되면 합치기 위해서입니다. 여러 명이 작업할 때 서로의 코드에 영향을 주지 않는 것이 핵심입니다.
+
+### 9-2. clone 과 pull 실습
+
+원격 저장소를 별도 디렉터리로 복제해 수정·푸시한 뒤, 원본 작업 디렉터리에서 `pull`로 가져왔습니다.
+
+```bash
+# 1) 별도 디렉터리로 복제
+$ git clone git@github.com:02junho/codyssey-Mission2.git codyssey-Mission2-clone
+
+# 2) 복제본에서 README 를 수정하고 푸시
+$ cd codyssey-Mission2-clone
+$ git commit -m "Docs: clone 저장소에서 README 실습 문구 추가"
+$ git push
+
+# 3) 원본 작업 디렉터리에서 변경사항 가져오기
+$ cd ../codyssey-Mission2
+$ git pull
+```
+
+![git pull 결과](docs/screenshots/git_pull.png)
+
+`Fast-forward`로 병합되면서 README에 추가한 문장이 원본 디렉터리에도 반영된 것을 확인했습니다.
+아래 문장이 그때 가져온 내용입니다.
 
 > 이 문장은 clone 한 저장소에서 추가한 뒤 push 하고, 원본 작업 디렉터리에서 pull 로 가져온 내용입니다. (clone/pull 실습)
+
+### 9-3. 사용한 Git 명령어
+
+| 명령어 | 사용한 곳 |
+|---|---|
+| `init` | 로컬 저장소 생성 |
+| `add` | 변경 파일을 스테이징에 올림 |
+| `commit` | 기능 단위로 이력 저장 (12회) |
+| `push` | GitHub 원격 저장소로 업로드 |
+| `pull` | 복제본에서 푸시한 변경사항 가져오기 |
+| `checkout` | `feature/quiz-play` 브랜치 생성 및 이동 |
+| `clone` | 원격 저장소를 별도 디렉터리로 복제 |
