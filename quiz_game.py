@@ -9,6 +9,8 @@
 
 import os
 import json
+import random
+from datetime import datetime
 
 from quiz import Quiz
 
@@ -63,12 +65,14 @@ class QuizGame:
         quizzes (list): Quiz 객체들의 목록
         best_score (int): 최고 점수 (0~100)
         best_detail (dict): 최고 점수를 기록했을 때의 (정답 수/전체 문제 수)
+        history (list): 게임 기록(날짜, 푼 문제 수, 정답 수, 점수)
     """
 
     def __init__(self):
         self.quizzes = []
         self.best_score = 0
         self.best_detail = {"correct": 0, "total": 0}
+        self.history = []
 
     # -------------------------------------------------------------------
     # 파일 저장 / 불러오기 (state.json)
@@ -110,6 +114,7 @@ class QuizGame:
             self.quizzes = [Quiz.from_dict(item) for item in data.get("quizzes", [])]
             self.best_score = data.get("best_score", 0)
             self.best_detail = data.get("best_detail", {"correct": 0, "total": 0})
+            self.history = data.get("history", [])
             # 파일은 있었지만 내용이 비었으면 기본 퀴즈로 채운다.
             if not self.quizzes:
                 self.quizzes = self.default_quizzes()
@@ -121,13 +126,15 @@ class QuizGame:
             self.quizzes = self.default_quizzes()
             self.best_score = 0
             self.best_detail = {"correct": 0, "total": 0}
+            self.history = []
 
     def save_state(self):
-        """현재 퀴즈와 점수를 state.json 에 UTF-8 로 저장한다."""
+        """현재 퀴즈와 점수, 게임 기록을 state.json 에 UTF-8 로 저장한다."""
         data = {
             "quizzes": [quiz.to_dict() for quiz in self.quizzes],
             "best_score": self.best_score,
             "best_detail": self.best_detail,
+            "history": self.history,
         }
         try:
             with open(STATE_FILE, "w", encoding="utf-8") as f:
@@ -140,17 +147,83 @@ class QuizGame:
     # 메뉴
     # -------------------------------------------------------------------
     def show_menu(self):
-        """메뉴를 출력하고, 사용자가 고른 번호(1~5)를 돌려준다."""
+        """메뉴를 출력하고, 사용자가 고른 번호(1~6)를 돌려준다."""
         print("\n" + "=" * 40)
         print("           🎯 나만의 퀴즈 게임 🎯")
         print("=" * 40)
-        print("  1. 퀴즈 추가")
-        print("  2. 퀴즈 목록")
-        print("  3. 점수 확인")
-        print("  4. 퀴즈 삭제")
-        print("  5. 종료")
+        print("  1. 퀴즈 풀기")
+        print("  2. 퀴즈 추가")
+        print("  3. 퀴즈 목록")
+        print("  4. 점수 확인")
+        print("  5. 퀴즈 삭제")
+        print("  6. 종료")
         print("=" * 40)
-        return read_int("선택: ", 1, 5)
+        return read_int("선택: ", 1, 6)
+
+    # -------------------------------------------------------------------
+    # 퀴즈 풀기 (보너스: 랜덤 출제 / 문제 수 선택 / 힌트)
+    # -------------------------------------------------------------------
+    def play_quiz(self):
+        """저장된 퀴즈를 출제하고 채점한 뒤 결과와 최고 점수를 정리한다."""
+        # 퀴즈가 하나도 없으면 진행할 수 없으므로 먼저 처리한다.
+        if not self.quizzes:
+            print("\n📭 등록된 퀴즈가 없습니다. 먼저 퀴즈를 추가하세요.")
+            return
+
+        total_available = len(self.quizzes)
+        # (보너스) 몇 문제를 풀지 사용자가 선택한다.
+        count = read_int(f"\n몇 문제를 풀까요? (1~{total_available}): ", 1, total_available)
+
+        # (보너스) random.sample 로 중복 없이 무작위로 count 개를 뽑는다.
+        selected = random.sample(self.quizzes, count)
+
+        print(f"\n📝 퀴즈를 시작합니다! (총 {count}문제)")
+        score = 0.0                 # 점수 (힌트를 쓰면 절반만 인정)
+        correct_count = 0           # 맞힌 문제 수
+        per_question = 100 / count  # 문제 하나당 배점
+
+        for number, quiz in enumerate(selected, start=1):
+            print("\n" + "-" * 40)
+            quiz.show(number)
+
+            hint_used = False
+            while True:
+                # 0 을 입력하면 힌트를 보여주고 다시 정답을 받는다. (보너스)
+                choice = read_int("\n정답 입력 (0=힌트): ", 0, 4)
+                if choice == 0:
+                    print(f"💡 힌트: {quiz.hint or '힌트가 없습니다.'}")
+                    if quiz.hint:
+                        hint_used = True
+                    continue
+                break
+
+            if quiz.is_correct(choice):
+                correct_count += 1
+                # 힌트를 사용했다면 배점의 절반만 인정한다.
+                score += per_question / 2 if hint_used else per_question
+                print("✅ 정답입니다!" + (" (힌트 사용 -> 절반 점수)" if hint_used else ""))
+            else:
+                print(f"❌ 오답입니다. 정답은 {quiz.answer}번 입니다.")
+
+        final_score = round(score)
+        print("\n" + "=" * 40)
+        print(f"🏆 결과: {count}문제 중 {correct_count}문제 정답! ({final_score}점)")
+
+        # 최고 점수보다 높으면 갱신한다.
+        if final_score > self.best_score:
+            self.best_score = final_score
+            self.best_detail = {"correct": correct_count, "total": count}
+            print("🎉 새로운 최고 점수입니다!")
+        print("=" * 40)
+
+        # (보너스) 이번 게임 기록을 히스토리에 남긴다.
+        self.history.append({
+            "datetime": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "total": count,
+            "correct": correct_count,
+            "score": final_score,
+        })
+        self.save_state()
 
     # -------------------------------------------------------------------
     # 퀴즈 추가
@@ -187,14 +260,25 @@ class QuizGame:
     # 점수 확인
     # -------------------------------------------------------------------
     def show_score(self):
-        """최고 점수를 보여준다."""
-        if self.best_score == 0:
+        """최고 점수와 최근 게임 기록을 보여준다."""
+        # 한 번도 풀지 않았다면 안내만 하고 끝낸다.
+        if self.best_score == 0 and not self.history:
             print("\n🙅 아직 퀴즈를 푼 기록이 없습니다.")
             return
 
         detail = self.best_detail
         print(f"\n🏆 최고 점수: {self.best_score}점 "
               f"({detail['total']}문제 중 {detail['correct']}문제 정답)")
+
+        # (보너스) 최근 게임 기록을 최대 5개까지 보여준다.
+        if self.history:
+            print("\n🕘 최근 게임 기록 (최대 5개)")
+            print("-" * 40)
+            for record in self.history[-5:]:
+                print(f"{record['datetime']} | "
+                      f"{record['total']}문제 중 {record['correct']}문제 | "
+                      f"{record['score']}점")
+            print("-" * 40)
 
     # -------------------------------------------------------------------
     # 퀴즈 삭제
@@ -218,14 +302,16 @@ class QuizGame:
         while True:
             choice = self.show_menu()
             if choice == 1:
-                self.add_quiz()
+                self.play_quiz()
             elif choice == 2:
-                self.list_quizzes()
+                self.add_quiz()
             elif choice == 3:
-                self.show_score()
+                self.list_quizzes()
             elif choice == 4:
-                self.delete_quiz()
+                self.show_score()
             elif choice == 5:
+                self.delete_quiz()
+            elif choice == 6:
                 self.save_state()
                 print("\n👋 게임을 종료합니다. 안녕히 가세요!")
                 break
